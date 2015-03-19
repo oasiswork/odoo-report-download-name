@@ -5,6 +5,9 @@ from openerp.addons.report.controllers.main import ReportController
 from openerp.osv import osv
 from openerp import http
 import simplejson
+import logging
+
+_logger = logging.getLogger(__name__)
 
 class PTReportController(ReportController):
     @route(['/report/download'], type='http', auth="user")
@@ -15,6 +18,8 @@ class PTReportController(ReportController):
 
         if type == 'qweb-pdf':
             reportname = url.split('/report/pdf/')[1].split('?')[0]
+            _logger.info('Getting attachment name for {}'.format(reportname))
+
             docids = None
             if '/' in reportname:
                 reportname, docids = reportname.split('/')
@@ -28,11 +33,19 @@ class PTReportController(ReportController):
                     ids = [int(docids.split(',')[0])]
                 else:
                     ids = [int(docids)]
+                _logger.info('Found document id: {}'.format(ids[0]))
 
                 attachment = report_obj._check_attachment_use(cr, uid, ids, report)
-                filename = attachment[ids[0]]
 
-                response.headers.set('Content-Disposition', 'attachment; filename=%s;' % filename)
+                try:
+                    filename = attachment[ids[0]]
+                    _logger.info('Found report filename: {}'.format(filename))
+                    response.headers.set('Content-Disposition', 'attachment; filename=%s;' % filename)
+                except KeyError:
+                    if ids[0] in attachment['loaded_documents']:
+                        _logger.info('Report is loaded from attachment')
+                    else:
+                        _logger.warning('No report filename found, using default')
 
         return response
 # vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:
