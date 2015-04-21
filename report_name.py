@@ -5,6 +5,7 @@ from openerp.addons.report.controllers.main import ReportController
 from openerp.osv import osv
 from openerp import http
 import simplejson
+import time
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -43,7 +44,13 @@ class PTReportController(ReportController):
                     response.headers.set('Content-Disposition', 'attachment; filename=%s;' % filename)
                 except KeyError:
                     if ids[0] in attachment['loaded_documents']:
-                        _logger.info('Report is loaded from attachment')
+                        try:
+                            obj = report_obj.pool[report.model].browse(cr, uid, ids[0])
+                            filename = eval(report.attachment, {'object': obj, 'time': time})
+                            _logger.info('Found report filename in attachment: {}'.format(filename))
+                            response.headers.set('Content-Disposition', 'attachment; filename=%s;' % filename)
+                        except KeyError:
+                            _logger.info('Report is loaded from attachment')
                     else:
                         _logger.warning('No report filename found, using default')
 
